@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuneScope - Tuner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1c1c1c;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 70px; /* Space for the fixed nav bar */
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+        .gradient-text {
+            background-image: linear-gradient(to right, #f97316, #facc15);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .font-playfair {
+            font-family: 'Playfair Display', serif;
+        }
+        .section-title {
+            @apply text-3xl md:text-4xl font-bold text-white mb-8 text-center;
+            letter-spacing: -0.025em;
+        }
+        .card-style {
+            @apply block p-6 bg-stone-900/50 rounded-xl shadow-lg border border-transparent hover:bg-stone-800/70 hover:shadow-xl hover:shadow-amber-500/30 hover:border-amber-500/70 transition-all duration-300 ease-in-out transform hover:-translate-y-1;
+        }
+        .control-button {
+            @apply py-3 px-8 rounded-lg font-semibold shadow-md transition-colors duration-300;
+        }
+        .control-button-primary {
+            @apply bg-amber-500 text-stone-900 hover:bg-amber-600 hover:shadow-lg hover:shadow-amber-400/40;
+        }
+        .control-button-danger {
+            @apply bg-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-500/40;
+        }
+
+        /* Tuner Display */
+        #tuner-display {
+            @apply bg-stone-800 p-8 rounded-xl shadow-2xl flex flex-col items-center justify-center min-h-[300px] w-full max-w-lg mx-auto;
+        }
+        #current-note {
+            @apply text-8xl font-extrabold mb-4;
+            line-height: 1;
+        }
+        #frequency-display {
+            @apply text-2xl text-stone-300 mb-6 font-medium;
+        }
+        .no-pitch { color: #6b7280; }
+        .sharp-color { color: #dc143c; } /* Red */
+        .flat-color { color: #9333ea; } /* Purple */
+        .in-tune-color { color: #2e8b57; } /* Green */
+
+        /* Cent Meter */
+        #cents-meter-container {
+            @apply w-full h-8 bg-stone-900 rounded-full overflow-hidden mb-6;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        #cents-meter-fill {
+            height: 100%;
+            width: 50%; /* Initial position */
+            background-color: #6b7280;
+            transition: transform 0.05s linear, background-color 0.2s;
+            position: absolute;
+        }
+        #cents-indicator {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background-color: #facc15;
+            box-shadow: 0 0 10px rgba(250, 202, 21, 0.7);
+            z-index: 10;
+        }
+        #cents-display {
+            @apply text-xl font-extrabold mt-4;
+        }
+        
+        /* String Selection */
+        #target-strings {
+            @apply flex flex-wrap justify-center gap-3 mt-6;
+        }
+        .target-string-item {
+            @apply px-4 py-2 rounded-md text-stone-400 border border-stone-700 text-lg font-medium transition-all duration-200;
+            min-width: 60px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .target-string-item.active-string {
+            @apply bg-amber-500 text-stone-900 font-bold border-amber-500 shadow-md shadow-amber-500/30;
+        }
+        .back-button {
+            @apply mt-8 px-6 py-2 bg-stone-700 text-stone-100 rounded-lg hover:bg-stone-600 transition-colors;
+        }
+        /* Style for Instrument Images */
+        .instrument-img {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* NEW TOP NAV BAR STYLES */
+        #top-nav-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #0f0f0f;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 10px; /* Reduced padding */
+            gap: 10px; /* Gap between buttons */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .nav-button {
+            padding: 8px 10px;
+            font-size: 0.9em;
+            font-weight: 600;
+            border: 1px solid #d4af37;
+            border-radius: 6px;
+            background-color: #282828;
+            color: #d4af37;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-button:hover {
+            background-color: #d4af37;
+            color: #1c1c1c;
+        }
+        /* Instrument visualization container */
+        #instrument-viz-container {
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 30px;
+            background-color: #212121;
+            border-radius: 10px;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body class="bg-stone-950 text-stone-100 antialiased">
+
+    <!-- Fixed Top Navigation Bar -->
+    <div id="top-nav-bar">
+        <a href="w.html" class="nav-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+        <button id="back-to-options-btn" class="nav-button hidden" onclick="backToSelection()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Options
+        </button>
+    </div>
+
+    <header class="text-center pt-8 md:pt-12 mb-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-amber-500">
+            TuneScope Tuner
+        </h1>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        
+        <section id="instrument-selection-view" class="flex flex-col items-center">
+            <h2 class="section-title">Choose Your Instrument</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+                
+                <button class="card-style flex flex-col items-center justify-center text-center p-8" onclick="selectInstrument('guitar')">
+                    <div class="mb-4">
+                        <img src="https://placehold.co/96x96/292524/f59e0b?text=GUITAR" alt="Guitar Icon" class="instrument-img">
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-white mb-1">Guitar</h3>
+                        <p class="text-stone-400 text-base">Standard EADGBe tuning.</p>
+                    </div>
+                </button>
+                
+                <button class="card-style flex flex-col items-center justify-center text-center p-8" onclick="selectInstrument('ukulele')">
+                    <div class="mb-4">
+                        <img src="https://placehold.co/96x96/292524/f59e0b?text=UKE" alt="Ukulele Icon" class="instrument-img">
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-white mb-1">Ukulele</h3>
+                        <p class="text-stone-400 text-base">Standard GCEA tuning.</p>
+                    </div>
+                </button>
+                
+                <button class="card-style flex flex-col items-center justify-center text-center p-8" onclick="selectInstrument('bass')">
+                    <div class="mb-4">
+                        <img src="https://placehold.co/96x96/292524/f59e0b?text=BASS" alt="Bass Icon" class="instrument-img">
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-white mb-1">Bass</h3>
+                        <p class="text-stone-400 text-base">Standard EADG tuning.</p>
+                    </div>
+                </button>
+                
+            </div>
+        </section>
+
+        <section id="tuner-view" class="hidden flex flex-col items-center w-full max-w-lg">
+            <h2 class="section-title"><span id="instrument-name-display" class="capitalize"></span> Tuner</h2>
+            
+            <div id="instrument-viz-container">
+                <!-- Visualization will be injected here -->
+            </div>
+
+            <div id="tuner-display">
+                <p class="text-stone-300 text-lg mb-2 opacity-80">Target Note:</p>
+                <p id="target-note" class="text-4xl font-semibold text-white mb-4">E4 (329.63 Hz)</p>
+                
+                <p class="text-stone-300 text-lg mb-2 opacity-80">Detected Note & Octave:</p>
+                <p id="current-note" class="no-pitch text-8xl">--</p>
+                <p id="frequency-display" class="text-stone-300 text-xl font-medium">-- Hz</p>
+                
+                <!-- Cents Meter -->
+                <div id="cents-meter-container" class="mt-8">
+                    <!-- Meter Fill -->
+                    <div id="cents-meter-fill" style="transform: translateX(-50%); width: 50%;"></div>
+                    <!-- Center Indicator (The line marking 0 cents) -->
+                    <div id="cents-indicator"></div>
+                </div>
+
+                <p id="cents-display" class="no-pitch text-3xl font-bold">-- cents</p>
+
+                <div id="target-strings" class="mt-8">
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4 mt-10 w-full justify-center">
+                    <button id="start-tuner-button" class="control-button control-button-primary">Start Tuner</button>
+                    <button id="stop-tuner-button" class="control-button control-button-danger" disabled>Stop Tuner</button>
+                </div>
+            </div>
+            <!-- The old "back to selection" button is replaced by the top nav bar button -->
+        </section>
+    </main>
+
+    <script>
+        let audioContext;
+        let analyserNode;
+        let mediaStreamSource;
+        let mediaStream; 
+        let animationFrameId;
+        let isDetecting = false;
+        let selectedInstrument = null;
+        let currentTargetMidi = null;
+        let currentTargetSvgIndex = null; 
+
+        // Constants
+        const A4_FREQ = 440;
+        const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const ACCURACY_THRESHOLD = 10; 
+        
+        const MIN_DETECTABLE_FREQUENCY = 40; 
+        const MAX_DETECTABLE_FREQUENCY = 1200; 
+        const RMS_THRESHOLD = 0.005; 
+        const YIN_THRESHOLD = 0.15; 
+
+        // Instrument Definitions: MIDI notes for open strings
+        const instrumentTunings = {
+            'guitar': [40, 45, 50, 55, 59, 64], // E2, A2, D3, G3, B3, E4
+            'ukulele': [67, 60, 64, 69],        // G4, C4, E4, A4 (Re-entrant tuning)
+            'bass': [28, 33, 38, 43]            // E1, A1, D2, G2
+        };
+
+        // DOM Elements
+        const instrumentSelectionView = document.getElementById('instrument-selection-view');
+        const tunerVew = document.getElementById('tuner-view');
+        const instrumentNameDisplay = document.getElementById('instrument-name-display');
+        const instrumentVizContainer = document.getElementById('instrument-viz-container');
+        const targetNoteDisplay = document.getElementById('target-note');
+        const currentNoteDisplay = document.getElementById('current-note');
+        const frequencyDisplay = document.getElementById('frequency-display');
+        const centsDisplay = document.getElementById('cents-display');
+        const centsMeterContainer = document.getElementById('cents-meter-container');
+        const centsMeterFill = document.getElementById('cents-meter-fill');
+        const targetStringsContainer = document.getElementById('target-strings');
+        const startTunerButton = document.getElementById('start-tuner-button');
+        const stopTunerButton = document.getElementById('stop-tuner-button');
+        const backToOptionsBtn = document.getElementById('back-to-options-btn');
+        
+        // --- UTILITY FUNCTIONS ---
+        
+        /**
+         * Generates the SVG visualization for the instrument neck and strings.
+         */
+        function renderInstrumentViz(instrument) {
+            let svgWidth = 300;
+            let svgHeight = 250;
+            let stringCount = instrumentTunings[instrument].length;
+            let isBass = instrument === 'bass';
+            
+            // Background neck/headstock area
+            let neckPath = `<rect x="50" y="50" width="200" height="200" fill="#362f2d" rx="10" ry="10"/>`;
+            
+            let strings = '';
+            let stringDots = []; // Tuning indicators
+            let startX = 60;
+            let endX = 240;
+            let spacing = (endX - startX) / (stringCount - 1);
+            
+            for (let i = 0; i < stringCount; i++) {
+                let x = startX + (i * spacing);
+                // Adjust thickness based on string index (thicker strings on the left)
+                let thickness = isBass ? 4 - (i * 0.5) : 3 - (i * 0.3); 
+                if (thickness < 1) thickness = 1; 
+                
+                // Draw the string line (from tuning peg area down the neck)
+                strings += `<line id="viz-string-${i}" x1="${x}" y1="50" x2="${x}" y2="250" stroke="#facc15" stroke-width="${thickness}" opacity="0.4"/>`;
+                
+                // Add a highlight circle placeholder at the top of the neck
+                stringDots.push(`<circle id="viz-dot-${i}" cx="${x}" cy="30" r="10" fill="#444" stroke="#d4af37" stroke-width="2" opacity="0.8"/>`);
+            }
+
+            let instrumentSvg = `
+                <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="w-full h-auto max-w-sm">
+                    ${neckPath}
+                    ${strings}
+                    ${stringDots.join('')}
+                </svg>
+            `;
+
+            return instrumentSvg;
+        }
+
+        function midiToFreq(midi) {
+            return A4_FREQ * Math.pow(2, (midi - 69) / 12);
+        }
+
+        function freqToMidi(frequency) {
+            if (frequency <= 0) return null;
+            return 12 * (Math.log(frequency / A4_FREQ) / Math.log(2)) + 69;
+        }
+
+        function midiToNoteName(midiNote) {
+            const noteIndex = (midiNote % 12 + 12) % 12;
+            const octave = Math.floor(midiNote / 12) - 1;
+            return `${NOTE_NAMES[noteIndex]}${octave}`;
+        }
+        
+        function updateCentsMeter(cents) {
+            const maxCents = 50;
+            let displayCents = Math.max(-maxCents, Math.min(maxCents, cents));
+            
+            // Map cents deviation (-50 to +50) to meter position (0% to 100%)
+            const meterPercentage = (displayCents + maxCents) / (2 * maxCents) * 100;
+            
+            let fillWidth;
+            let transformValue;
+            let color;
+
+            if (displayCents > 0) { // Sharp
+                fillWidth = meterPercentage - 50;
+                transformValue = 50;
+                color = displayCents > ACCURACY_THRESHOLD ? '#dc143c' : '#2e8b57'; // Red/Green
+            } else if (displayCents < 0) { // Flat
+                fillWidth = 50 - meterPercentage;
+                transformValue = meterPercentage;
+                color = displayCents < -ACCURACY_THRESHOLD ? '#9333ea' : '#2e8b57'; // Purple/Green
+            } else { // In tune (or within threshold)
+                fillWidth = 0;
+                transformValue = 50;
+                color = '#2e8b57';
+            }
+
+            centsMeterFill.style.width = `${fillWidth}%`;
+            centsMeterFill.style.transform = `translateX(${transformValue}%)`;
+            centsMeterFill.style.backgroundColor = color;
+        }
+
+        // --- YIN PITCH DETECTION (Optimized for accuracy) ---
+
+        function getPitch(buffer, sampleRate) {
+            const bufferSize = buffer.length;
+            const tauMax = Math.floor(sampleRate / MIN_DETECTABLE_FREQUENCY);
+            const tauMin = Math.floor(sampleRate / MAX_DETECTABLE_FREQUENCY);
+            
+            let rms = 0;
+            for (let i = 0; i < bufferSize; i++) { rms += buffer[i] * buffer[i]; }
+            rms = Math.sqrt(rms / bufferSize);
+
+            if (rms < RMS_THRESHOLD) { return 0; }
+            
+            const diff = new Float32Array(tauMax);
+            for (let tau = 0; tau < tauMax; tau++) {
+                for (let i = 0; i < bufferSize - tau; i++) {
+                    const delta = buffer[i] - buffer[i + tau];
+                    diff[tau] += delta * delta;
+                }
+            }
+            
+            const cmndf = new Float32Array(tauMax);
+            cmndf[0] = 1;
+            let runningSum = 0;
+            for (let tau = 1; tau < tauMax; tau++) {
+                runningSum += diff[tau];
+                const denominator = runningSum * tau;
+                cmndf[tau] = denominator === 0 ? 1 : diff[tau] / denominator;
+            }
+            
+            let bestTau = -1;
+            for (let tau = tauMin; tau < tauMax; tau++) {
+                if (cmndf[tau] < YIN_THRESHOLD) {
+                    if (tau + 1 < tauMax && cmndf[tau - 1] > cmndf[tau] && cmndf[tau + 1] > cmndf[tau]) {
+                         bestTau = tau;
+                         break;
+                    }
+                }
+            }
+
+            if (bestTau === -1) return 0;
+
+            const a = cmndf[bestTau - 1];
+            const b = cmndf[bestTau];
+            const c = cmndf[bestTau + 1];
+            const denominator = a - 2 * b + c;
+            let interpolatedTau;
+            
+            if (denominator === 0) {
+                 interpolatedTau = bestTau;
+            } else {
+                 const shift = 0.5 * (a - c) / denominator;
+                 interpolatedTau = bestTau + shift;
+            }
+
+            return sampleRate / interpolatedTau;
+        }
+
+        // --- TUNER CORE LOGIC ---
+        
+        /**
+         * Finds the closest target string for the given frequency.
+         * Returns an object {midi: number, index: number, svgIndex: number} or null.
+         */
+        function getClosestTarget(detectedFreq) {
+            if (!selectedInstrument || detectedFreq === 0) return null;
+
+            const tunings = instrumentTunings[selectedInstrument];
+            let closestString = null;
+            let minCentsDiff = Infinity;
+            
+            const stringCount = tunings.length;
+
+            tunings.forEach((targetMidi, index) => {
+                const targetFreq = midiToFreq(targetMidi);
+                const centsDiff = 1200 * Math.log2(detectedFreq / targetFreq);
+                
+                // Only consider it a strong candidate if it is within 50 cents (half step)
+                if (Math.abs(centsDiff) < 50) {
+                     if (Math.abs(centsDiff) < Math.abs(minCentsDiff)) {
+                        minCentsDiff = centsDiff;
+                        // svgIndex maps string array index (0=low E) to reversed visual index (0=low E on the left)
+                        const svgIndex = stringCount - 1 - index; 
+
+                        closestString = {
+                            midi: targetMidi,
+                            index: index,
+                            svgIndex: svgIndex,
+                            cents: centsDiff
+                        };
+                    }
+                }
+            });
+            
+            return closestString;
+        }
+
+        /**
+         * Updates the visual state of the strings and pegs.
+         */
+        function highlightVizString(svgIndex, cents) {
+            const stringCount = instrumentTunings[selectedInstrument].length;
+            
+            // Determine the color based on deviation
+            let dotColor = '#444'; // Default dark grey
+            let lineColor = '#facc15'; // Default amber
+            let lineWidth = '3';
+
+            if (svgIndex !== null) {
+                if (Math.abs(cents) <= ACCURACY_THRESHOLD) {
+                    dotColor = '#2e8b57'; // Green
+                } else if (cents > ACCURACY_THRESHOLD) {
+                    dotColor = '#dc143c'; // Red (Sharp)
+                } else {
+                    dotColor = '#9333ea'; // Purple (Flat)
+                }
+                
+                lineColor = '#facc15'; // Active string line color
+                lineWidth = '4';
+            }
+
+            // Loop through all strings/dots to reset/set colors
+            for(let i = 0; i < stringCount; i++) {
+                // The visualization index is the reversed index
+                const vizIndex = i; 
+                const isCurrentTarget = vizIndex === svgIndex;
+                
+                const dotElement = document.getElementById(`viz-dot-${vizIndex}`);
+                const lineElement = document.getElementById(`viz-string-${vizIndex}`);
+
+                if (dotElement && lineElement) {
+                    // Reset or set color/width for the line
+                    lineElement.setAttribute('opacity', isCurrentTarget ? '1.0' : '0.4');
+                    lineElement.setAttribute('stroke-width', isCurrentTarget ? lineWidth : '3');
+                    
+                    // Reset or set color for the peg dot
+                    dotElement.setAttribute('fill', isCurrentTarget ? dotColor : '#444');
+                }
+            }
+        }
+
+
+        function pitchDetectionLoop() {
+            if (!isDetecting) return;
+
+            const bufferLength = analyserNode.fftSize;
+            const dataArray = new Float32Array(bufferLength);
+            analyserNode.getFloatTimeDomainData(dataArray);
+
+            const detectedFrequency = getPitch(dataArray, audioContext.sampleRate);
+            
+            let cents = 0;
+            let noteText = '--';
+            let hertzText = '-- Hz';
+            let centsText = '-- cents';
+            let stringSvgIndex = null;
+            let currentTargetName = '';
+
+            if (detectedFrequency > 0) {
+                const closestString = getClosestTarget(detectedFrequency);
+                
+                if (closestString) {
+                    // ** AUTOMATIC SELECTION: Update the global target **
+                    currentTargetMidi = closestString.midi;
+                    currentTargetSvgIndex = closestString.svgIndex;
+                    
+                    cents = closestString.cents;
+                    stringSvgIndex = closestString.svgIndex;
+                    
+                    currentTargetName = midiToNoteName(currentTargetMidi);
+                    
+                    noteText = currentTargetName;
+                    hertzText = `${detectedFrequency.toFixed(2)} Hz`;
+
+                    // Update the visible target string indicator buttons
+                    const stringButtons = targetStringsContainer.querySelectorAll('.target-string-item');
+                    stringButtons.forEach(btn => btn.classList.remove('active-string'));
+                    const activeBtn = targetStringsContainer.querySelector(`[data-midi="${currentTargetMidi}"]`);
+                    if (activeBtn) activeBtn.classList.add('active-string');
+                    
+                    targetNoteDisplay.textContent = `${currentTargetName} (${midiToFreq(currentTargetMidi).toFixed(2)} Hz)`;
+                    
+                    // Update Cent Display Text
+                    if (Math.abs(cents) <= ACCURACY_THRESHOLD) {
+                        centsText = `✅ ${cents.toFixed(1)} cents (In Tune!)`;
+                        centsDisplay.className = 'text-xl font-extrabold mt-4 in-tune-color';
+                    } else if (cents > ACCURACY_THRESHOLD) {
+                        centsText = `⬆️ ${cents.toFixed(1)} cents (Sharp)`;
+                        centsDisplay.className = 'text-xl font-extrabold mt-4 sharp-color';
+                    } else {
+                        centsText = `⬇️ ${cents.toFixed(1)} cents (Flat)`;
+                        centsDisplay.className = 'text-xl font-extrabold mt-4 flat-color';
+                    }
+                } else {
+                    // Detected pitch but too far from any target string
+                    noteText = midiToNoteName(freqToMidi(detectedFrequency));
+                    hertzText = `${detectedFrequency.toFixed(2)} Hz`;
+                    centsText = `Out of Range`;
+                    centsDisplay.className = 'text-xl font-extrabold mt-4 no-pitch';
+                    // Do not change target visualization, just show no pitch detected
+                    stringSvgIndex = currentTargetSvgIndex; 
+                }
+            } else {
+                // No pitch detected
+                centsDisplay.className = 'text-xl font-extrabold mt-4 no-pitch';
+                stringSvgIndex = currentTargetSvgIndex; // Keep last active string highlighted
+            }
+
+            // Update UI elements
+            currentNoteDisplay.textContent = noteText;
+            frequencyDisplay.textContent = hertzText;
+            centsDisplay.textContent = centsText;
+            updateCentsMeter(cents);
+            
+            // Update Visualization
+            highlightVizString(stringSvgIndex, cents);
+
+            animationFrameId = requestAnimationFrame(pitchDetectionLoop);
+        }
+        
+        function resetTunerDisplay() {
+            currentNoteDisplay.textContent = '--';
+            currentNoteDisplay.className = 'text-8xl font-extrabold mb-4 no-pitch';
+            frequencyDisplay.textContent = '-- Hz';
+            centsDisplay.textContent = '-- cents';
+            centsDisplay.className = 'text-xl font-extrabold mt-4 no-pitch';
+            targetNoteDisplay.textContent = 'Select an instrument and play a string...';
+            updateCentsMeter(0); // Reset meter to center
+            
+            document.querySelectorAll('.target-string-item').forEach(item => {
+                item.classList.remove('active-string');
+            });
+            currentTargetMidi = null;
+            currentTargetSvgIndex = null;
+            instrumentVizContainer.innerHTML = '';
+        }
+
+        function loadTargetStrings(instrument) {
+            targetStringsContainer.innerHTML = '';
+            instrumentVizContainer.innerHTML = renderInstrumentViz(instrument); // RENDER SVG
+            
+            const tunings = instrumentTunings[instrument];
+            if (tunings) {
+                // Note: The visual order (reversed) is critical here
+                const reversedTunings = tunings.slice().reverse();
+                reversedTunings.forEach((midiNote, svgIndex) => {
+                    const noteName = midiToNoteName(midiNote);
+                    const freq = midiToFreq(midiNote).toFixed(2);
+                    const span = document.createElement('span');
+                    
+                    span.classList.add('target-string-item');
+                    span.textContent = noteName;
+                    span.dataset.midi = midiNote;
+                    span.dataset.freq = freq;
+                    span.dataset.svgIndex = svgIndex; // Store index for SVG highlighting
+                    
+                    span.addEventListener('click', () => setTargetString(midiNote, noteName, freq, span, svgIndex));
+
+                    targetStringsContainer.appendChild(span);
+                });
+                
+                // Automatically set the lowest string (index 0 in reversed list) as the initial target
+                const firstString = targetStringsContainer.querySelector('.target-string-item');
+                if (firstString) {
+                    setTargetString(
+                        parseInt(firstString.dataset.midi),
+                        firstString.textContent,
+                        firstString.dataset.freq,
+                        firstString,
+                        parseInt(firstString.dataset.svgIndex)
+                    );
+                }
+            }
+        }
+        
+        function setTargetString(midi, name, freq, element, svgIndex) {
+            currentTargetMidi = midi;
+            currentTargetSvgIndex = svgIndex;
+            targetNoteDisplay.textContent = `${name} (${freq} Hz)`;
+            
+            document.querySelectorAll('.target-string-item').forEach(item => {
+                item.classList.remove('active-string');
+            });
+            element.classList.add('active-string');
+            
+            // Initial visualization update (show default peg color until audio starts)
+            // Use 0 cents so it defaults to green/in-tune color
+            highlightVizString(svgIndex, 0); 
+        }
+
+        // --- VIEW MANAGEMENT ---
+
+        function showView(viewId) {
+            instrumentSelectionView.classList.add('hidden');
+            tunerVew.classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+            
+            // Manage the "Options" button visibility
+            if (viewId === 'tuner-view') {
+                backToOptionsBtn.classList.remove('hidden');
+            } else {
+                backToOptionsBtn.classList.add('hidden');
+            }
+        }
+
+        function selectInstrument(instrument) {
+            selectedInstrument = instrument;
+            instrumentNameDisplay.textContent = instrument.charAt(0).toUpperCase() + instrument.slice(1);
+            loadTargetStrings(instrument);
+            showView('tuner-view');
+        }
+
+        function backToSelection() {
+            stopPitchDetection();
+            selectedInstrument = null;
+            showView('instrument-selection-view');
+            resetTunerDisplay();
+        }
+
+        // --- START/STOP HANDLERS ---
+
+        async function startPitchDetection() {
+            if (isDetecting) return;
+            if (currentTargetMidi === null) {
+                alert("Please select an instrument string first.");
+                return;
+            }
+
+            startTunerButton.disabled = true;
+            stopTunerButton.disabled = false;
+            isDetecting = true;
+            
+            if (!audioContext || audioContext.state === 'closed') {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        echoCancellation: false,
+                        noiseSuppression: false, 
+                        autoGainControl: false 
+                    } 
+                });
+                mediaStream = stream;
+                
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 2048; 
+                analyserNode.smoothingTimeConstant = 0.5;
+
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                mediaStreamSource.connect(analyserNode);
+
+                pitchDetectionLoop();
+
+            } catch (error) {
+                console.error('Microphone access error:', error);
+                alert('Could not access your microphone. Please ensure it is connected and permissions are granted.');
+                stopPitchDetection();
+            }
+        }
+
+        function stopPitchDetection() {
+            if (!isDetecting) return;
+
+            cancelAnimationFrame(animationFrameId);
+
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            startTunerButton.disabled = false;
+            stopTunerButton.disabled = true;
+            isDetecting = false;
+            
+            // Preserve the current state but update visualization
+            const lastTargetMidi = currentTargetMidi;
+            const lastSvgIndex = currentTargetSvgIndex;
+
+            resetTunerDisplay();
+            
+            if(lastTargetMidi !== null) {
+                // Manually restore target and visualization state upon stopping
+                currentTargetMidi = lastTargetMidi;
+                currentTargetSvgIndex = lastSvgIndex;
+                
+                const activeElement = targetStringsContainer.querySelector(`[data-midi="${lastTargetMidi}"]`);
+                if (activeElement) {
+                    setTargetString(
+                        parseInt(activeElement.dataset.midi),
+                        activeElement.textContent,
+                        activeElement.dataset.freq,
+                        activeElement,
+                        parseInt(activeElement.dataset.svgIndex)
+                    );
+                }
+            }
+        }
+
+        startTunerButton.addEventListener('click', startPitchDetection);
+        stopTunerButton.addEventListener('click', stopPitchDetection);
+
+        window.onload = () => {
+            showView('instrument-selection-view');
+            resetTunerDisplay();
+        };
+        
+    </script>
+</body>
+</html>

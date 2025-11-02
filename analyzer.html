@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Analyzer</title>
+    <style>
+        /* ... (Keep your existing CSS) ... */
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1c1c1c 0%, #0a0a0a 100%);
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 70px; /* Space for the fixed nav bar */
+            box-sizing: border-box;
+            line-height: 1.6;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: #d4af37;
+            margin-top: 0px;
+            margin-bottom: 30px;
+            font-size: 2.8em;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+            text-align: center;
+        }
+
+        .section-box {
+            background-color: #282828;
+            border-radius: 10px;
+            padding: 20px 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid #444;
+            width: 100%;
+            max-width: 700px;
+            margin-bottom: 30px;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .section-box:hover {
+            box-shadow: 0 6px 18px rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+        }
+
+        h2 {
+            color: #d4af37;
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .control-button {
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-button-primary {
+            background-color: #007bff; 
+            color: white;
+            border: 1px solid #007bff;
+        }
+        .control-button-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .control-button-secondary {
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        .control-button-secondary:hover {
+            background-color: #4a4a4a;
+            border-color: #666;
+            transform: translateY(-2px);
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #1c1c1c;
+            color: #e0e0e0;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        audio {
+            width: 100%;
+            margin: 15px 0;
+            filter: invert(10%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(150%) contrast(100%);
+        }
+
+        #current-note-display {
+            font-size: 4em;
+            font-weight: 700;
+            color: #d4af37;
+            text-align: center;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+        #current-frequency-display {
+            font-size: 1.5em;
+            color: #bbb;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #notes-display-area {
+            background-color: #1c1c1c;
+            border-radius: 6px;
+            padding: 15px;
+            min-height: 60px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #555;
+            font-size: 1.1em;
+        }
+
+        #scale-suggestions-list {
+            list-style: none;
+            padding: 0;
+        }
+        #scale-suggestions-list li {
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            border-left: 5px solid #d4af37;
+            font-size: 0.95em;
+        }
+        #scale-suggestions-list li strong {
+            color: #d4af37;
+        }
+        #scale-suggestions-list li span {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        
+        /* NEW TOP NAV BAR STYLES */
+        #top-nav-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #0f0f0f;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .nav-button {
+            padding: 8px 15px;
+            font-size: 1em;
+            font-weight: 600;
+            border: 1px solid #d4af37;
+            border-radius: 6px;
+            background-color: #282828;
+            color: #d4af37;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-button:hover {
+            background-color: #d4af37;
+            color: #1c1c1c;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="top-nav-bar">
+        <a href="w.html" class="nav-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+    </div>
+
+    <h1>Audio Analyzer 🎶</h1>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        
+        <section class="section-box" id="load-section">
+            <h2 class="mb-4">Load Audio</h2>
+            <div id="file-load-area">
+                <input type="file" id="audioFile" accept="audio/*">
+                <div class="flex justify-center gap-4 mt-6">
+                    <button id="loadAudioButton" class="control-button control-button-primary">Load Audio File</button>
+                </div>
+            </div>
+            <p id="loaded-audio-name" class="text-center text-green-400 mt-4 hidden">Loaded: --</p>
+        </section>
+
+        <section class="section-box">
+            <h2 class="mb-4">Real-Time Analysis</h2>
+            <audio id="audioPlayer" controls></audio>
+            
+            <p id="current-note-display">--</p>
+            <p id="current-frequency-display">-- Hz</p>
+
+            <h3 class="text-lg font-semibold text-white mb-2 mt-4">Detected Notes (MIDI Pitch Classes)</h3>
+            <div id="notes-display-area">
+                <p class="text-stone-400 text-sm italic">Notes detected during playback will appear here.</p>
+            </div>
+
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="clearNotesButton" class="control-button control-button-secondary">Clear Notes</button>
+                <button id="identifyScalesButton" class="control-button control-button-primary">Identify Scale</button>
+            </div>
+        </section>
+
+        <section class="section-box" id="scale-results-section">
+            <h2 class="mb-4">Suggested Scales</h2>
+            <div id="scale-suggestions-area">
+                <ul id="scale-suggestions-list">
+                    <li>No scales suggested yet.</li>
+                </ul>
+            </div>
+        </section>
+
+        <a href="virerecord.html" class="control-button control-button-secondary mt-8">← Back to Recordings</a>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script>
+        // TODO: Replace with your actual Firebase config object
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAiQ7Dhsih0IWppdwTxfTKLBWXnZ44xHQ0",
+  authDomain: "cclproj-42c85.firebaseapp.com",
+  projectId: "cclproj-42c85",
+  storageBucket: "cclproj-42c85.firebasestorage.app",
+  messagingSenderId: "862583513087",
+  appId: "1:862583513087:web:7c91157f9c4ee8a97751ca",
+  measurementId: "G-QNC4GVHQ47"
+};
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // --- Firebase Auth Check ---
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                // User is signed out. Redirect to signup.
+                window.location.href = 'signup.html';
+            } else {
+                // User is signed in. Proceed with setup.
+                // Call the existing setup function to process URL parameters.
+                initializeAnalyzer();
+            }
+        });
+
+        // --- Existing Analyzer Logic (Wrapped in a function) ---
+        function initializeAnalyzer() {
+            let audioContext;
+            let analyserNode;
+            let animationFrameId;
+            let isAnalyzing = false;
+            let audioBuffer;
+            let mediaElementSource;
+
+            const MIN_DETECTABLE_FREQUENCY = 60; 
+            const MAX_DETECTABLE_FREQUENCY = 1200; 
+            const A4_FREQ = 440;
+            const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            const DAMPING_THRESHOLD = 0.05; 
+
+            let collectedNotes = new Set();
+            let lastDetectedNoteClass = null; 
+
+            const audioFileInput = document.getElementById('audioFile');
+            const loadAudioButton = document.getElementById('loadAudioButton');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const currentNoteDisplay = document.getElementById('current-note-display');
+            const currentFrequencyDisplay = document.getElementById('current-frequency-display');
+            const notesDisplayArea = document.getElementById('notes-display-area');
+            const clearNotesButton = document.getElementById('clearNotesButton');
+            const identifyScalesButton = document.getElementById('identifyScalesButton');
+            const scaleSuggestionsList = document.getElementById('scale-suggestions-list');
+            const loadedAudioNameDisplay = document.getElementById('loaded-audio-name');
+            const fileLoadArea = document.getElementById('file-load-area');
+
+            const scalePatterns = {
+                'Major Scale (Ionian)': [0, 2, 4, 5, 7, 9, 11],
+                'Natural Minor (Aeolian)': [0, 2, 3, 5, 7, 8, 10],
+                'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
+                'Dorian Mode': [0, 2, 3, 5, 7, 9, 10],
+                'Mixolydian Mode': [0, 2, 4, 5, 7, 9, 10],
+                'Blues Scale': [0, 3, 5, 6, 7, 10],
+            };
+
+            // Function to load audio from a file input
+            async function loadAudioFromFile() {
+                const file = audioFileInput.files[0];
+                if (!file) {
+                    alert('Please select an audio file first.');
+                    return;
+                }
+                loadedAudioNameDisplay.textContent = `Loaded: ${file.name}`;
+                loadedAudioNameDisplay.classList.remove('hidden');
+                await decodeAndPrepareAudio(file);
+            }
+            loadAudioButton.addEventListener('click', loadAudioFromFile);
+
+
+            // Core audio loading and preparation function
+            async function decodeAndPrepareAudio(fileOrBlobOrUrl) {
+                let audioSource;
+                
+                if (fileOrBlobOrUrl instanceof File) {
+                    audioSource = fileOrBlobOrUrl;
+                } else if (fileOrBlobOrUrl instanceof Blob) {
+                    audioSource = fileOrBlobOrUrl;
+                } else if (typeof fileOrBlobOrUrl === 'string') {
+                    audioSource = fileOrBlobOrUrl; 
+                } else {
+                    return; 
+                }
+
+                // --- Decode and Buffer ---
+                const arrayBuffer = audioSource.slice ? await audioSource.arrayBuffer() : await fetch(audioSource).then(r => r.arrayBuffer());
+
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                try {
+                    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    
+                    // Set audio player source. 
+                    if (typeof audioSource === 'string') {
+                        audioPlayer.src = audioSource; 
+                    } else {
+                        audioPlayer.src = URL.createObjectURL(audioSource); 
+                    }
+                    
+                    audioPlayer.load();
+                    console.log('Audio loaded successfully!');
+                    resetAnalysisState();
+                } catch (error) {
+                    console.error('Error decoding audio:', error);
+                    alert('Failed to load audio. Please ensure it is a valid audio file.');
+                }
+            }
+            
+            // --- Integration Fix: Handle data from virerecord.html ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const dataUrl = urlParams.get('audioData');
+            const audioName = urlParams.get('audioName');
+
+            if (dataUrl) {
+                // Hide file input, show loaded name
+                fileLoadArea.style.display = 'none';
+                loadedAudioNameDisplay.textContent = `Loaded from Recordings: ${audioName || 'Unknown Recording'}`;
+                loadedAudioNameDisplay.classList.remove('hidden');
+                
+                // Pass the Data URL string directly to the decoder
+                decodeAndPrepareAudio(dataUrl); 
+            } else {
+                resetAnalysisState();
+            }
+
+
+            audioPlayer.addEventListener('play', startAnalysis);
+            audioPlayer.addEventListener('pause', stopAnalysis);
+            audioPlayer.addEventListener('ended', stopAnalysis);
+            
+            function resetAnalysisState() {
+                stopAnalysis();
+                collectedNotes.clear();
+                notesDisplayArea.innerHTML = '<p class="text-stone-400 text-sm italic">Notes detected during playback will appear here.</p>';
+                currentNoteDisplay.textContent = '--';
+                currentFrequencyDisplay.textContent = '-- Hz';
+                scaleSuggestionsList.innerHTML = '<li>No scales suggested yet.</li>';
+            }
+
+            function startAnalysis() {
+                if (isAnalyzing || !audioPlayer.src) return;
+
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                if (mediaElementSource) mediaElementSource.disconnect();
+                if (analyserNode) analyserNode.disconnect();
+
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 2048;
+                analyserNode.smoothingTimeConstant = 0.8;
+
+                mediaElementSource = audioContext.createMediaElementSource(audioPlayer);
+                
+                mediaElementSource.connect(analyserNode);
+                analyserNode.connect(audioContext.destination);
+
+                isAnalyzing = true;
+                analyzePitchLoop();
+                console.log("Audio analysis started.");
+            }
+
+            function stopAnalysis() {
+                if (!isAnalyzing) return;
+
+                cancelAnimationFrame(animationFrameId);
+                isAnalyzing = false;
+                lastDetectedNoteClass = null; 
+                console.log("Audio analysis stopped.");
+            }
+            
+            // Simple Autocorrelation (Pitch Detection)
+            function getPitch(audioBufferData, sampleRate) {
+                const bufferSize = audioBufferData.length;
+                const MAX_OFFSET = Math.floor(sampleRate / MIN_DETECTABLE_FREQUENCY);
+                const MIN_OFFSET = Math.floor(sampleRate / MAX_DETECTABLE_FREQUENCY);
+
+                let bestCorrelation = -1;
+                let bestOffset = -1;
+                
+                let rms = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    rms += audioBufferData[i] * audioBufferData[i];
+                }
+                rms = Math.sqrt(rms / bufferSize);
+
+                if (rms < DAMPING_THRESHOLD) { 
+                    return 0;
+                }
+
+                for (let offset = MIN_OFFSET; offset <= MAX_OFFSET; offset++) {
+                    let currentCorrelation = 0;
+                    for (let i = 0; i < bufferSize - offset; i++) {
+                        currentCorrelation += audioBufferData[i] * audioBufferData[i + offset];
+                    }
+
+                    if (currentCorrelation > bestCorrelation) {
+                        bestCorrelation = currentCorrelation;
+                        bestOffset = offset;
+                    }
+                }
+
+                if (bestOffset === -1 || bestOffset === 0 || bestCorrelation < 0.1) return 0;
+
+                const frequency = sampleRate / bestOffset;
+                return frequency;
+            }
+
+            function frequencyToMidi(frequency) {
+                if (frequency === 0) return null;
+                return 12 * (Math.log(frequency / A4_FREQ) / Math.log(2)) + 69;
+            }
+
+            // Real-Time Analysis Loop
+            function analyzePitchLoop() {
+                if (!isAnalyzing) return;
+
+                const bufferLength = analyserNode.fftSize;
+                const dataArray = new Float32Array(bufferLength);
+                analyserNode.getFloatTimeDomainData(dataArray);
+
+                const detectedFrequency = getPitch(dataArray, audioContext.sampleRate);
+
+                let noteText = '--';
+                let hertzText = '-- Hz';
+
+                if (detectedFrequency > 0) {
+                    const midiNote = frequencyToMidi(detectedFrequency);
+                    if (midiNote !== null) {
+                        const roundedMidiNote = Math.round(midiNote);
+                        const midiClass = (roundedMidiNote % 12 + 12) % 12; // 0=C, 11=B
+                        const octave = Math.floor(roundedMidiNote / 12) - 1;
+
+                        noteText = `${NOTE_NAMES[midiClass]}${octave}`;
+                        hertzText = `${detectedFrequency.toFixed(2)} Hz`;
+
+                        if (midiClass !== lastDetectedNoteClass) {
+                            collectedNotes.add(midiClass);
+                            updateNotesDisplayArea();
+                            lastDetectedNoteClass = midiClass;
+                        }
+                    }
+                } else {
+                    lastDetectedNoteClass = null; 
+                }
+
+                currentNoteDisplay.textContent = noteText;
+                currentFrequencyDisplay.textContent = hertzText;
+
+                animationFrameId = requestAnimationFrame(analyzePitchLoop);
+            }
+
+            function updateNotesDisplayArea() {
+                const firstChild = notesDisplayArea.children[0];
+                if (firstChild && firstChild.tagName === 'P' && firstChild.classList.contains('italic')) {
+                    notesDisplayArea.innerHTML = '';
+                }
+                const sortedNotes = Array.from(collectedNotes).sort((a, b) => a - b);
+                notesDisplayArea.textContent = sortedNotes.map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+                notesDisplayArea.scrollTop = notesDisplayArea.scrollHeight;
+            }
+
+            clearNotesButton.addEventListener('click', () => {
+                resetAnalysisState();
+            });
+
+            // Scale Identification Logic
+            identifyScalesButton.addEventListener('click', () => {
+                if (collectedNotes.size === 0) {
+                    scaleSuggestionsList.innerHTML = '<li>Please play some notes in the audio first.</li>';
+                    return;
+                }
+
+                scaleSuggestionsList.innerHTML = '';
+                const inputNoteClasses = Array.from(collectedNotes).sort((a, b) => a - b);
+                let foundSuggestions = false;
+                
+                for (let rootMidiClass = 0; rootMidiClass < 12; rootMidiClass++) {
+                    const rootName = NOTE_NAMES[rootMidiClass];
+
+                    for (const scaleName in scalePatterns) {
+                        const pattern = scalePatterns[scaleName];
+                        const scaleNotes = new Set();
+
+                        pattern.forEach(interval => {
+                            scaleNotes.add((rootMidiClass + interval) % 12);
+                        });
+
+                        let allNotesFit = true;
+                        for (const inputNote of inputNoteClasses) {
+                            if (!scaleNotes.has(inputNote)) {
+                                allNotesFit = false;
+                                break;
+                            }
+                        }
+
+                        if (allNotesFit && collectedNotes.size > 0) {
+                            const li = document.createElement('li');
+                            const notesInScaleDisplay = Array.from(scaleNotes).sort((a, b) => a - b).map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+                            li.innerHTML = `<strong>${rootName} ${scaleName}</strong> <span>(Contains: ${notesInScaleDisplay})</span>`;
+                            
+                            scaleSuggestionsList.appendChild(li);
+                            foundSuggestions = true;
+                        }
+                    }
+                }
+
+                if (!foundSuggestions) {
+                    scaleSuggestionsList.innerHTML = '<li>No common scales found for the detected notes. Try with a different audio or more distinct notes.</li>';
+                }
+            });
+        }
+    </script>
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+  
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyAiQ7Dhsih0IWppdwTxfTKLBWXnZ44xHQ0",
+      authDomain: "cclproj-42c85.firebaseapp.com",
+      projectId: "cclproj-42c85",
+      storageBucket: "cclproj-42c85.firebasestorage.app",
+      messagingSenderId: "862583513087",
+      appId: "1:862583513087:web:7c91157f9c4ee8a97751ca",
+      measurementId: "G-QNC4GVHQ47"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+  </script>
+</body>
+</html>

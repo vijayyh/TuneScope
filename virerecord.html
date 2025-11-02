@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Recordings</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1c1c1c 0%, #0a0a0a 100%);
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            padding-top: 70px; /* Space for the fixed nav bar */
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: #d4af37;
+            margin-bottom: 35px;
+            margin-top: 0px; /* Adjusted */
+            font-size: 2.8em;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+            text-align: center;
+        }
+
+        #recordings-list {
+            list-style: none;
+            padding: 0;
+            width: 90vw;
+            max-width: 700px;
+            background-color: #282828;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+            border: 1px solid #444;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #recordings-list li {
+            background-color: #1c1c1c;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #recordings-list li:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .recording-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #d4af37;
+            margin-bottom: 5px;
+        }
+
+        .recording-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap; 
+        }
+
+        .recording-controls audio {
+            flex-grow: 1;
+            min-width: 150px;
+            background-color: #0f0f0f;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .download-btn, .delete-btn, .analyze-btn, .upload-btn, #import-cloud-btn {
+            padding: 8px 15px;
+            font-size: 0.9em;
+            font-weight: 500;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            min-width: 90px;
+        }
+
+        .download-btn {
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+        }
+        .download-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .analyze-btn {
+            border: 1px solid #d4af37;
+            background-color: #282828;
+            color: #d4af37;
+        }
+        .analyze-btn:hover {
+            background-color: #d4af37;
+            color: #1c1c1c;
+            transform: translateY(-2px);
+        }
+
+        .upload-btn {
+            border: 1px solid #ff8c00; 
+            background-color: #ff8c00;
+            color: white;
+        }
+        .upload-btn:hover {
+            background-color: #cc7000;
+            transform: translateY(-2px);
+        }
+
+        .delete-btn {
+            border: 1px solid #b22222;
+            background-color: #b22222;
+            color: white;
+        }
+        .delete-btn:hover {
+            background-color: #dc143c;
+            transform: translateY(-2px);
+        }
+
+        /* NEW: Import from Cloud Button Style */
+        #import-cloud-btn {
+            background-color: #5a5a5a;
+            color: #e0e0e0;
+            border: 1px solid #777;
+            min-width: 150px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        #import-cloud-btn:hover:not(:disabled) {
+            background-color: #777;
+            transform: translateY(-2px);
+        }
+        #import-cloud-btn:disabled {
+            background-color: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+
+        #no-recordings-message {
+            text-align: center;
+            color: #888;
+            font-size: 1.2em;
+            padding: 20px;
+            display: block;
+        }
+
+        #navigation-controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap; /* Added for responsiveness */
+            justify-content: center;
+        }
+
+        #back-link, #open-analyzer-btn {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: 500;
+            text-decoration: none;
+            border-radius: 8px;
+            background-color: #3a3a3a;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            min-width: 120px;
+            text-align: center;
+        }
+        #back-link {
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+        #open-analyzer-btn {
+            color: #2e8b57;
+            border: 1px solid #2e8b57;
+        }
+
+        /* NEW TOP NAV BAR STYLES */
+        #top-nav-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #0f0f0f;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .nav-button {
+            padding: 8px 15px;
+            font-size: 1em;
+            font-weight: 600;
+            border: 1px solid #d4af37;
+            border-radius: 6px;
+            background-color: #282828;
+            color: #d4af37;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-button:hover {
+            background-color: #d4af37;
+            color: #1c1c1c;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="top-nav-bar">
+        <a href="w.html" class="nav-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+    </div>
+
+    <h1>Your Recordings</h1>
+
+    <ul id="recordings-list">
+        <li id="no-recordings-message">Loading local recordings...</li>
+    </ul>
+
+    <div id="navigation-controls">
+        <a href="record.html" id="back-link">Go to Recorder</a>
+        <button id="import-cloud-btn">Import from Cloud ☁️</button>
+        <a href="analyzer.html" id="open-analyzer-btn">Open Analyzer</a>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script>
+        // NOTE: Keeping your Firebase config as provided.
+        const firebaseConfig = {
+          apiKey: "AIzaSyAiQ7Dhsih0IWppdwTxfTKLBWXnZ44xHQ0",
+          authDomain: "cclproj-42c85.firebaseapp.com",
+          projectId: "cclproj-42c85",
+          storageBucket: "cclproj-42c85.firebasestorage.app", 
+          messagingSenderId: "862583513087",
+          appId: "1:862583513087:web:7c91157f9c4ee8a97751ca",
+          measurementId: "G-QNC4GVHQ47"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+        const db = firebase.firestore();
+
+        const recordingsList = document.getElementById('recordings-list');
+        const importCloudButton = document.getElementById('import-cloud-btn');
+        let cloudRecordingsLoaded = false; // NEW state flag
+        let allRecordings = []; // Array to hold both local and cloud
+
+        // --- UTILITY: Convert Data URL to Blob ---
+        function dataURLtoBlob(dataurl) {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
+        // --- UPLOAD LOGIC ---
+        async function uploadRecordingToCloud(recording, listItem) {
+            const user = auth.currentUser;
+            if (!user || recording.source === 'cloud') return; 
+
+            try {
+                // 1. Convert Data URL to Blob
+                const audioBlob = dataURLtoBlob(recording.data);
+                const storageRef = storage.ref();
+                const cleanName = recording.name.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+                const uploadPath = `recordings/${user.uid}/${cleanName}_${Date.now()}.webm`;
+                const audioRef = storageRef.child(uploadPath);
+
+                // 2. Upload the file (with progress tracking in the list item)
+                const uploadTask = audioRef.put(audioBlob, {
+                    contentType: recording.type || 'audio/webm'
+                });
+                
+                listItem.querySelector('.recording-name').textContent = `[Uploading...] ${recording.name}`;
+
+                await new Promise((resolve, reject) => {
+                     uploadTask.on('state_changed', 
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            listItem.querySelector('.recording-name').textContent = `[Uploading ${progress.toFixed(0)}%] ${recording.name}`;
+                        },
+                        (error) => { reject(error); },
+                        () => { resolve(); }
+                    );
+                });
+
+                // 3. Get Download URL
+                const downloadURL = await audioRef.getDownloadURL();
+
+                // 4. Save Metadata to Firestore
+                await db.collection("userRecordings").add({
+                    userId: user.uid,
+                    fileName: recording.name,
+                    storagePath: uploadPath,
+                    downloadURL: downloadURL,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // 5. Delete from Local Storage (since it's now in the cloud)
+                let localRecordings = JSON.parse(localStorage.getItem('audioRecordings') || '[]');
+                localRecordings = localRecordings.filter(rec => rec.id !== recording.id);
+                localStorage.setItem('audioRecordings', JSON.stringify(localRecordings));
+                
+                alert(`Successfully uploaded and indexed "${recording.name}" to the cloud!`);
+
+                // If cloud data was already imported, refresh to include the new file
+                if (cloudRecordingsLoaded) {
+                    loadAllRecordings(true); // Re-import cloud data and render
+                } else {
+                    loadAllRecordings(false); // Just refresh local data
+                }
+                
+            } catch (error) {
+                console.error("Upload failed:", error);
+                listItem.querySelector('.recording-name').textContent = `[UPLOAD FAILED] ${recording.name}`;
+                alert(`Upload failed for ${recording.name}: ${error.message}`);
+            }
+        }
+
+        // --- DELETE LOGIC ---
+        async function deleteRecording(idToDelete, source, storagePath) {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            if (source === 'local') {
+                let recordings = JSON.parse(localStorage.getItem('audioRecordings') || '[]');
+                recordings = recordings.filter(rec => rec.id !== idToDelete);
+                localStorage.setItem('audioRecordings', JSON.stringify(recordings));
+                alert("Local recording deleted.");
+                loadAllRecordings(false); 
+
+            } else if (source === 'cloud') {
+                const userConfirmed = confirm("Are you sure you want to permanently delete this recording from the cloud? This removes it from all your devices.");
+                if (!userConfirmed) return;
+
+                try {
+                    // 1. Delete file from Storage
+                    const fileRef = storage.ref(storagePath);
+                    await fileRef.delete();
+                    
+                    // 2. Delete document from Firestore
+                    await db.collection("userRecordings").doc(idToDelete).delete();
+
+                    alert("Cloud recording deleted successfully.");
+                    loadAllRecordings(true); // Force reload of cloud and local
+                } catch (error) {
+                    console.error("Error deleting cloud file:", error);
+                    alert(`Failed to delete cloud recording. Check console and Storage Rules.`);
+                }
+            }
+        }
+
+        // --- CORE RENDERING FUNCTION ---
+        function renderRecordings(recordings) {
+            recordingsList.innerHTML = '';
+
+            if (recordings.length === 0) {
+                const msg = document.createElement('li');
+                msg.id = 'no-recordings-message';
+                msg.textContent = cloudRecordingsLoaded ? 
+                    'No recordings found (Local or Cloud).' : 
+                    'No local recordings found. Click "Import from Cloud" to check remote files.';
+                recordingsList.appendChild(msg);
+                return;
+            } 
+
+            recordings.forEach(recording => {
+                const listItem = document.createElement('li');
+                
+                // Determine display prefix
+                let sourcePrefix = '';
+                let deleteText = '';
+                if (recording.source === 'cloud') {
+                    sourcePrefix = '☁️ [CLOUD] ';
+                    deleteText = 'Delete Cloud';
+                } else if (recording.source === 'local') {
+                    sourcePrefix = '💻 [LOCAL] ';
+                    deleteText = 'Delete Local';
+                } else {
+                    // Error item display
+                    listItem.style.backgroundColor = '#441c1c';
+                    listItem.style.borderLeft = '5px solid red';
+                    listItem.innerHTML = `<span class="recording-name" style="color:#dc143c;">${recording.name}</span>`;
+                    recordingsList.appendChild(listItem);
+                    return;
+                }
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'recording-name';
+                nameSpan.textContent = sourcePrefix + recording.name;
+                listItem.appendChild(nameSpan);
+
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'recording-controls';
+
+                const audioElement = document.createElement('audio');
+                audioElement.controls = true;
+                audioElement.src = recording.data;
+                audioElement.type = recording.type || 'audio/webm';
+                controlsDiv.appendChild(audioElement);
+                
+                // UPLOAD Button (Only for local files)
+                if (recording.source === 'local') {
+                    const uploadBtn = document.createElement('button');
+                    uploadBtn.className = 'upload-btn';
+                    uploadBtn.textContent = '☁️ Upload';
+                    uploadBtn.addEventListener('click', () => {
+                        uploadRecordingToCloud(recording, listItem);
+                    });
+                    controlsDiv.appendChild(uploadBtn);
+                }
+
+                // ANALYZE BUTTON
+                const analyzeBtn = document.createElement('button');
+                analyzeBtn.className = 'analyze-btn';
+                analyzeBtn.textContent = 'Analyze';
+                analyzeBtn.addEventListener('click', () => {
+                    const params = new URLSearchParams();
+                    params.append('audioData', recording.data); 
+                    params.append('audioName', recording.name);
+                    window.location.href = `analyzer.html?${params.toString()}`;
+                });
+                controlsDiv.appendChild(analyzeBtn);
+
+                // DOWNLOAD Button
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.textContent = recording.source === 'cloud' ? 'Download' : 'Local Download';
+                downloadBtn.addEventListener('click', () => {
+                    const a = document.createElement('a');
+                    a.href = recording.data;
+                    const cleanName = recording.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    a.download = `${cleanName}.webm`; 
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+                controlsDiv.appendChild(downloadBtn);
+
+                // DELETE Button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = deleteText;
+                deleteBtn.addEventListener('click', () => {
+                    deleteRecording(recording.id, recording.source, recording.storagePath);
+                });
+                controlsDiv.appendChild(deleteBtn);
+
+                listItem.appendChild(controlsDiv);
+                recordingsList.appendChild(listItem);
+            });
+        }
+        
+        // --- LOAD LOCAL ONLY ---
+        function loadLocalRecordings() {
+            let localRecordings = JSON.parse(localStorage.getItem('audioRecordings') || '[]');
+            allRecordings = localRecordings.map(rec => ({ 
+                ...rec, 
+                source: 'local',
+                storagePath: null 
+            }));
+            renderRecordings(allRecordings);
+        }
+
+        // --- IMPORT CLOUD LOGIC (NEW) ---
+        async function importCloudRecordings() {
+            if (cloudRecordingsLoaded) return; // Prevent double loading
+            
+            importCloudButton.disabled = true;
+            importCloudButton.textContent = "Loading...";
+
+            const user = auth.currentUser;
+            let cloudRecordings = [];
+
+            try {
+                const snapshot = await db.collection("userRecordings")
+                    .where("userId", "==", user.uid)
+                    .orderBy("timestamp", "desc")
+                    .get();
+
+                snapshot.forEach(doc => {
+                    const cloudRec = doc.data();
+                    cloudRecordings.push({
+                        id: doc.id,
+                        name: cloudRec.fileName,
+                        data: cloudRec.downloadURL, 
+                        type: 'audio/webm',
+                        source: 'cloud',
+                        storagePath: cloudRec.storagePath
+                    });
+                });
+                cloudRecordingsLoaded = true;
+                importCloudButton.textContent = "Cloud Imported";
+                
+            } catch (error) {
+                console.error("Error loading cloud recordings:", error);
+                
+                // Add an error item to the list
+                const errorItem = { source: 'error', name: "❌ Failed to load cloud data (Check Firestore Rules in console)." };
+                
+                allRecordings = allRecordings.filter(rec => rec.source === 'local'); // Clear old list
+                allRecordings.push(errorItem);
+                
+                importCloudButton.disabled = false;
+                importCloudButton.textContent = "Import Failed ☁️";
+                renderRecordings(allRecordings);
+                return;
+            }
+            
+            // Combine with local data and render
+            allRecordings = allRecordings.filter(rec => rec.source === 'local'); // Ensure only local data remains
+            allRecordings.push(...cloudRecordings);
+            renderRecordings(allRecordings);
+        }
+        
+        // Wrapper function to handle both load scenarios
+        function loadAllRecordings(shouldImportCloud) {
+            loadLocalRecordings();
+            if (shouldImportCloud) {
+                 // Reset the button state before calling importCloudRecordings
+                importCloudButton.disabled = false; 
+                cloudRecordingsLoaded = false;
+                importCloudRecordings();
+            }
+        }
+
+        // --- EVENT LISTENER ---
+        importCloudButton.addEventListener('click', importCloudRecordings);
+
+        // --- FIREBASE AUTH CHECK ---
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                loadAllRecordings(false); // Only load local recordings on initial page load
+            } else {
+                window.location.href = 'signup.html';
+            }
+        });
+
+    </script>
+</body>
+</html>

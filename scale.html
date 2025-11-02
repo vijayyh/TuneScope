@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musical Scale Identifier</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1c1c1c 0%, #0a0a0a 100%);
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            padding-top: 70px; /* Space for the fixed nav bar */
+            box-sizing: border-box;
+            overflow-x: hidden; 
+        }
+
+        h1 {
+            color: #d4af37;
+            margin-bottom: 35px;
+            margin-top: 0px;
+            font-size: 2.8em;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+            text-align: center;
+        }
+
+        #input-notes-display {
+            background-color: #282828;
+            border-radius: 10px;
+            padding: 25px 35px;
+            margin-bottom: 35px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-size: 1.6em;
+            color: #f0f0f0;
+            min-height: 60px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 90vw;
+            max-width: 800px;
+            border: 1px solid #444;
+        }
+        #input-notes-display p {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        #realtime-pitch-info {
+            font-size: 2em;
+            font-weight: 700;
+            color: #ff8c00;
+            margin-bottom: 10px;
+            min-height: 36px;
+        }
+
+        #note-input-bar {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 35px;
+            background-color: #0f0f0f;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            width: 90vw;
+            max-width: 950px;
+            flex-wrap: wrap; 
+        }
+
+        .note-button {
+            padding: 15px 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            transition: background-color 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            min-width: 50px;
+            text-align: center;
+            opacity: 0.8; /* Adjusted base opacity */
+        }
+        /* Buttons are not clickable when audio is running */
+        .note-button.audio-running {
+            cursor: default;
+        }
+        .note-button:not(.audio-running) {
+            cursor: pointer;
+        }
+        .note-button:not(.audio-running):hover {
+             background-color: #444;
+             transform: translateY(-2px);
+        }
+        
+        /* Highlight for detected/selected notes */
+        .note-button.selected {
+            background-color: #d4af37;
+            color: #1c1c1c; 
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.8), inset 0 0 5px rgba(0, 0, 0, 0.5);
+            transform: translateY(-1px);
+            opacity: 1;
+        }
+
+        #controls {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+
+        .control-button {
+            padding: 14px 32px;
+            font-size: 1.2em;
+            font-weight: 600;
+            border: 1px solid #d4af37;
+            border-radius: 8px;
+            background-color: #282828;
+            color: #d4af37;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-button:hover:not(:disabled) {
+            background-color: #3a3a3a;
+            color: #f0f0f0;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .control-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #realtime-audio-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        #results-area {
+            background-color: #282828;
+            border-radius: 10px;
+            padding: 25px 35px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+            width: 90vw;
+            max-width: 800px;
+            border: 1px solid #444;
+        }
+
+        #results-area h2 {
+            color: #d4af37;
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+        }
+
+        /* Scale Suggestions Scrollbar */
+        #scale-suggestions {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: 15px;
+            min-height: 70px; 
+            align-items: center;
+            margin-top: 0;
+            white-space: nowrap;
+        }
+
+        #scale-suggestions::-webkit-scrollbar { height: 5px; }
+        #scale-suggestions::-webkit-scrollbar-thumb { background: #d4af37; border-radius: 10px; }
+        #scale-suggestions::-webkit-scrollbar-track { background: #333; }
+
+        #scale-suggestions li {
+            border-radius: 8px;
+            padding: 5px 12px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.1em;
+            color: #666;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.2s ease, text-shadow 0.2s ease, background-color 0.2s ease;
+            text-align: center;
+            background-color: #1c1c1c;
+            border: 1px solid #444;
+        }
+
+        #scale-suggestions li.selected-scale {
+            color: #1c1c1c;
+            background-color: #d4af37;
+            font-weight: bold;
+            text-shadow: none;
+            transform: scale(1.05); 
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
+        }
+
+        #scale-suggestions li strong {
+            color: inherit;
+            font-size: 1.1em;
+            margin-bottom: 3px;
+        }
+
+        #scale-suggestions li .notes-in-scale {
+            font-size: 0.85em; 
+            color: inherit;
+            opacity: 0.8;
+        }
+        
+        /* NEW TOP NAV BAR STYLES */
+        #top-nav-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #0f0f0f;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .nav-button {
+            padding: 8px 15px;
+            font-size: 1em;
+            font-weight: 600;
+            border: 1px solid #d4af37;
+            border-radius: 6px;
+            background-color: #282828;
+            color: #d4af37;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .nav-button:hover {
+            background-color: #d4af37;
+            color: #1c1c1c;
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- NEW: Fixed Top Navigation Bar -->
+    <div id="top-nav-bar">
+        <a href="w.html" class="nav-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+    </div>
+
+    <h1>Musical Scale Identifier</h1>
+
+    <div id="input-notes-display">
+        <span id="realtime-pitch-info">--</span>
+        Selected Notes: <span id="current-notes">None</span>
+        <p>Detected notes (highlighted yellow) are collected to identify scales.</p>
+    </div>
+
+    <!-- The note bar is now an indicator, primarily managed by real-time audio -->
+    <div id="note-input-bar">
+        </div>
+
+    <div id="realtime-audio-controls">
+        <button id="start-audio-button" class="control-button">Start Audio Input</button>
+        <button id="stop-audio-button" class="control-button" disabled>Stop Audio Input</button>
+    </div>
+
+    <div id="controls">
+        <button id="clear-notes-button" class="control-button">Clear Notes</button>
+        <button id="identify-scales-button" class="control-button">Identify Scales</button>
+    </div>
+
+    <div id="results-area">
+        <h2>Suggested Scales</h2>
+        <ul id="scale-suggestions">
+            <li>Press "Start Audio Input" and play notes to begin identification.</li>
+        </ul>
+    </div>
+
+    <script>
+        let playedNotes = new Set();
+        let mediaStream; 
+        
+        const currentNotesDisplay = document.getElementById('current-notes');
+        const realtimePitchInfo = document.getElementById('realtime-pitch-info');
+        const scaleSuggestionsList = document.getElementById('scale-suggestions');
+        const clearNotesButton = document.getElementById('clear-notes-button');
+        const identifyScalesButton = document.getElementById('identify-scales-button');
+        const noteInputBar = document.getElementById('note-input-bar');
+
+        const startAudioButton = document.getElementById('start-audio-button');
+        const stopAudioButton = document.getElementById('stop-audio-button');
+
+        let audioContext;
+        let analyser;
+        let mediaStreamSource;
+        let animationFrameId;
+        let isAudioRunning = false;
+        
+        // Debounce variables
+        let noteDebounceTimer = null;
+        let lastVisualNote = null; // The note currently highlighted in the bar
+        const DEBOUNCE_TIME_MS = 500; // 0.5 seconds requirement
+        
+        // Pitch Detection Constants
+        const A4_FREQ = 440;
+        const MIN_DETECTABLE_FREQUENCY = 60; // C2
+        const MAX_DETECTABLE_FREQUENCY = 1200; // D6
+        const RMS_THRESHOLD = 0.01;
+        const YIN_THRESHOLD = 0.15;
+
+        const scalePatterns = {
+            'Major (Ionian)': [0, 2, 4, 5, 7, 9, 11],
+            'Natural Minor (Aeolian)': [0, 2, 3, 5, 7, 8, 10],
+            'Dorian Mode': [0, 2, 3, 5, 7, 9, 10],
+            'Mixolydian Mode': [0, 2, 4, 5, 7, 9, 10],
+            'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
+            'Melodic Minor (Asc)': [0, 2, 3, 5, 7, 9, 11],
+            'Blues Scale': [0, 3, 5, 6, 7, 10],
+        };
+
+        const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const buttonElements = {};
+
+        // --- UI Setup ---
+
+        function createNoteInputButtons() {
+            noteInputBar.innerHTML = ''; 
+            NOTE_NAMES.forEach((noteName, index) => {
+                const button = document.createElement('button');
+                button.classList.add('note-button');
+                button.textContent = noteName;
+                button.dataset.midiClass = index; 
+
+                button.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('audio-running')) {
+                        e.preventDefault(); 
+                        return;
+                    }
+                    // Manual toggle logic
+                    const midiClass = parseInt(e.target.dataset.midiClass);
+                    toggleNote(midiClass, buttonElements[midiClass]);
+                });
+                noteInputBar.appendChild(button);
+                buttonElements[index] = button;
+            });
+        }
+
+        /**
+         * Toggles the note's state (selected in the playedNotes set and visually).
+         * @param {number} midiClass - MIDI note class (0-11).
+         * @param {HTMLElement} buttonElement - The corresponding note button.
+         * @param {boolean} [commitToSet=false] - If true, permanently adds/removes to the playedNotes set (used for debounced recording).
+         */
+        function toggleNote(midiClass, buttonElement, commitToSet = false) {
+            let isSelected = buttonElement.classList.contains('selected');
+
+            if (commitToSet) {
+                // This is the debounced recording call (always set to true/add)
+                playedNotes.add(midiClass);
+                buttonElement.classList.add('selected');
+            } else {
+                // This is a manual click (toggle)
+                if (isSelected) {
+                    playedNotes.delete(midiClass);
+                    buttonElement.classList.remove('selected');
+                } else {
+                    playedNotes.add(midiClass);
+                    buttonElement.classList.add('selected');
+                }
+            }
+            updatePlayedNotesDisplay();
+        }
+        
+        /**
+         * Visually highlights a note button without changing the recorded notes set.
+         * @param {number|null} midiClass - MIDI note class (0-11) or null to clear highlight.
+         */
+        function visualHighlight(midiClass) {
+            if (lastVisualNote !== null && lastVisualNote !== midiClass) {
+                const oldButton = buttonElements[lastVisualNote];
+                if (oldButton && !playedNotes.has(lastVisualNote)) {
+                    oldButton.classList.remove('selected');
+                }
+            }
+
+            if (midiClass !== null) {
+                const newButton = buttonElements[midiClass];
+                if (newButton) {
+                     newButton.classList.add('selected');
+                }
+            }
+            lastVisualNote = midiClass;
+        }
+
+        function updatePlayedNotesDisplay() {
+            const sortedNotes = Array.from(playedNotes).sort((a, b) => a - b);
+            const displayNotes = sortedNotes.map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+            currentNotesDisplay.textContent = displayNotes || 'None';
+        }
+
+        function clearNotes() {
+            playedNotes.clear();
+            updatePlayedNotesDisplay();
+            scaleSuggestionsList.innerHTML = '<li>Notes cleared. Identify scales again once notes are detected/selected.</li>';
+            
+            Object.values(buttonElements).forEach(button => {
+                button.classList.remove('selected');
+            });
+            
+            // Also clear the instant visual indicator
+            lastVisualNote = null;
+        }
+        
+        // --- SCALE IDENTIFICATION LOGIC (Unchanged) ---
+        function identifyScales() {
+            if (playedNotes.size === 0) {
+                scaleSuggestionsList.innerHTML = '<li>Please input or detect at least two distinct notes first.</li>';
+                return;
+            }
+
+            scaleSuggestionsList.innerHTML = '';
+            const inputNoteClasses = Array.from(playedNotes).sort((a, b) => a - b);
+
+            let foundSuggestions = false;
+
+            for (let rootMidiClass = 0; rootMidiClass < 12; rootMidiClass++) {
+                const rootName = NOTE_NAMES[rootMidiClass];
+
+                for (const scaleName in scalePatterns) {
+                    const pattern = scalePatterns[scaleName];
+                    const scaleNotes = new Set();
+
+                    pattern.forEach(interval => {
+                        scaleNotes.add((rootMidiClass + interval) % 12);
+                    });
+
+                    let allNotesFit = true;
+                    for (const inputNote of inputNoteClasses) {
+                        if (!scaleNotes.has(inputNote)) {
+                            allNotesFit = false;
+                            break;
+                        }
+                    }
+
+                    // Only suggest the scale if ALL played notes fit the scale
+                    if (allNotesFit && playedNotes.size >= 2) { 
+                        const li = document.createElement('li');
+                        const notesInScaleDisplay = Array.from(scaleNotes).sort((a, b) => a - b).map(midiClass => NOTE_NAMES[midiClass]).join(', ');
+                        li.innerHTML = `<strong>${rootName} ${scaleName}</strong> <span class="notes-in-scale">(${notesInScaleDisplay})</span>`;
+                        
+                        li.addEventListener('click', () => {
+                            document.querySelectorAll('#scale-suggestions li').forEach(item => {
+                                item.classList.remove('selected-scale');
+                            });
+                            li.classList.add('selected-scale');
+                        });
+
+                        scaleSuggestionsList.appendChild(li);
+                        foundSuggestions = true;
+                    }
+                }
+            }
+
+            if (!foundSuggestions) {
+                scaleSuggestionsList.innerHTML = '<li>No common scales found that contain ALL detected notes. Try less dissonant notes.</li>';
+            }
+        }
+        
+        // --- YIN Pitch Detection Algorithm (Unchanged) ---
+
+        function getPitch(buffer, sampleRate) {
+            const bufferSize = buffer.length;
+            const tauMax = Math.floor(sampleRate / MIN_DETECTABLE_FREQUENCY);
+            const tauMin = Math.floor(sampleRate / MAX_DETECTABLE_FREQUENCY);
+            
+            let rms = 0;
+            for (let i = 0; i < bufferSize; i++) {
+                rms += buffer[i] * buffer[i];
+            }
+            rms = Math.sqrt(rms / bufferSize);
+
+            if (rms < RMS_THRESHOLD) { return 0; }
+            
+            const diff = new Float32Array(tauMax);
+            for (let tau = 0; tau < tauMax; tau++) {
+                for (let i = 0; i < bufferSize - tau; i++) {
+                    const delta = buffer[i] - buffer[i + tau];
+                    diff[tau] += delta * delta;
+                }
+            }
+            
+            const cmndf = new Float32Array(tauMax);
+            cmndf[0] = 1;
+            let runningSum = 0;
+            for (let tau = 1; tau < tauMax; tau++) {
+                runningSum += diff[tau];
+                const denominator = runningSum * tau;
+                cmndf[tau] = denominator === 0 ? 1 : diff[tau] / denominator;
+            }
+            
+            let bestTau = -1;
+            for (let tau = tauMin; tau < tauMax; tau++) {
+                if (cmndf[tau] < YIN_THRESHOLD) {
+                    if (tau + 1 < tauMax && cmndf[tau - 1] > cmndf[tau] && cmndf[tau + 1] > cmndf[tau]) {
+                         bestTau = tau;
+                         break;
+                    }
+                }
+            }
+
+            if (bestTau === -1) return 0;
+
+            const a = cmndf[bestTau - 1];
+            const b = cmndf[bestTau];
+            const c = cmndf[bestTau + 1];
+            const denominator = a - 2 * b + c;
+            let interpolatedTau;
+            
+            if (denominator === 0) {
+                 interpolatedTau = bestTau;
+            } else {
+                 const shift = 0.5 * (a - c) / denominator;
+                 interpolatedTau = bestTau + shift;
+            }
+
+            return sampleRate / interpolatedTau;
+        }
+
+        function frequencyToMidi(frequency) {
+            if (frequency === 0) return null;
+            return 12 * (Math.log(frequency / A4_FREQ) / Math.log(2)) + 69;
+        }
+
+        // --- Main Audio Loop ---
+
+        function startPitchDetection() {
+            if (!isAudioRunning || !analyser || !audioContext) return;
+            
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Float32Array(bufferLength); 
+
+            const detectPitch = () => {
+                if (!isAudioRunning) return;
+
+                analyser.getFloatTimeDomainData(dataArray);
+
+                const detectedFrequency = getPitch(dataArray, audioContext.sampleRate);
+
+                let currentNoteClass = null;
+                let isPitchLocked = false;
+
+                if (detectedFrequency > 0) {
+                    const midiNote = frequencyToMidi(detectedFrequency);
+                    if (midiNote !== null) {
+                        const roundedMidiNote = Math.round(midiNote);
+                        const noteIndex = (roundedMidiNote % 12 + 12) % 12; 
+                        const octave = Math.floor(roundedMidiNote / 12) - 1; 
+
+                        currentNoteClass = noteIndex;
+                        realtimePitchInfo.textContent = `${NOTE_NAMES[noteIndex]}${octave} (${detectedFrequency.toFixed(2)} Hz)`;
+                        isPitchLocked = true;
+                        
+                        // 1. INSTANT VISUAL CLICK/HIGHLIGHT
+                        visualHighlight(currentNoteClass);
+
+                        // --- DEBOUNCE LOGIC START ---
+                        
+                        // If the detected note is different from the last note *being recorded*
+                        if (currentNoteClass !== lastVisualNote) {
+                            
+                            // Clear any existing timer, as the pitch has changed or dropped
+                            if (noteDebounceTimer) {
+                                clearTimeout(noteDebounceTimer);
+                            }
+
+                            // Start a new timer for the new pitch
+                            noteDebounceTimer = setTimeout(() => {
+                                // Double-check: is the pitch STILL the same note as what triggered the timer (currentNoteClass)?
+                                // We can use the lastVisualNote here since it was set just above
+                                if (lastVisualNote !== null) {
+                                    // 2. COMMIT TO SET (Record the note)
+                                    toggleNote(lastVisualNote, buttonElements[lastVisualNote], true);
+                                }
+                            }, DEBOUNCE_TIME_MS);
+                        } else if (!playedNotes.has(currentNoteClass)) {
+                             // If the note is stable and we haven't recorded it yet, ensure the timer is running
+                             // If the timer is null, it means we dropped the note and picked it back up, so restart debounce
+                             if (!noteDebounceTimer) {
+                                 noteDebounceTimer = setTimeout(() => {
+                                     toggleNote(currentNoteClass, buttonElements[currentNoteClass], true);
+                                 }, DEBOUNCE_TIME_MS);
+                             }
+                        }
+                        
+                        // --- DEBOUNCE LOGIC END ---
+
+                    }
+                } 
+                
+                if (!isPitchLocked) {
+                    realtimePitchInfo.textContent = `Vibrating/No Pitch Detected`;
+                    
+                    // Clear the timer only if the pitch is gone (not just vibrating). 
+                    // To be safe, we clear the timer to force a new debounce period when sound returns.
+                    if (noteDebounceTimer) {
+                       clearTimeout(noteDebounceTimer);
+                       noteDebounceTimer = null;
+                    }
+                    visualHighlight(null); // Clear instant highlight
+                }
+
+
+                animationFrameId = requestAnimationFrame(detectPitch);
+            };
+            animationFrameId = requestAnimationFrame(detectPitch);
+        }
+        
+        // --- CONTROL BUTTON HANDLERS ---
+
+        async function startAudioInput() {
+            if (isAudioRunning) return;
+
+            startAudioButton.disabled = true;
+            stopAudioButton.disabled = false;
+            identifyScalesButton.disabled = false;
+            
+            // Initialize AudioContext
+            if (!audioContext || audioContext.state === 'closed') {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false } });
+                mediaStream = stream;
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048; 
+                
+                mediaStreamSource.connect(analyser);
+                
+                isAudioRunning = true;
+                realtimePitchInfo.textContent = 'Listening...';
+                
+                Object.values(buttonElements).forEach(btn => btn.classList.add('audio-running'));
+
+                startPitchDetection();
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                alert('Could not start audio input. Please ensure microphone access is granted.');
+                stopAudioInput(true); 
+            }
+        }
+
+        function stopAudioInput(wasError = false) {
+            if (!isAudioRunning && !wasError) return;
+
+            cancelAnimationFrame(animationFrameId);
+            if (noteDebounceTimer) clearTimeout(noteDebounceTimer); // Clear any pending notes
+
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            isAudioRunning = false;
+            startAudioButton.disabled = false;
+            stopAudioButton.disabled = true;
+            realtimePitchInfo.textContent = '--';
+            
+            Object.values(buttonElements).forEach(btn => btn.classList.remove('audio-running'));
+            
+            // Reset debounce state and visual highlight
+            lastVisualNote = null;
+            lastStableNote = null;
+            // Ensure all temporary highlights are cleared
+            Object.values(buttonElements).forEach(button => {
+                if (!playedNotes.has(parseInt(button.dataset.midiClass))) {
+                    button.classList.remove('selected');
+                }
+            });
+        }
+
+
+        // --- EVENT LISTENERS ---
+        clearNotesButton.addEventListener('click', clearNotes);
+        identifyScalesButton.addEventListener('click', identifyScales);
+        startAudioButton.addEventListener('click', startAudioInput);
+        stopAudioButton.addEventListener('click', stopAudioInput);
+
+
+        window.onload = () => {
+            createNoteInputButtons();
+            updatePlayedNotesDisplay();
+            identifyScalesButton.disabled = false;
+        };
+    </script>
+</body>
+</html>

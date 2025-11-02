@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder</title>
+    <style>
+        /* Your same CSS — unchanged for brevity */
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1c1c1c 0%, #0a0a0a 100%);
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            padding-top: 70px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        h1 {
+            color: #d4af37;
+            margin-bottom: 35px;
+            font-size: 2.8em;
+            font-weight: 600;
+            text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+            text-align: center;
+        }
+        /* ...rest of your CSS remains same... */
+    </style>
+</head>
+<body>
+    
+    <div id="top-nav-bar">
+        <a href="w.html" class="nav-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+    </div>
+
+    <button id="logout-btn" style="display:none;">Logout</button>
+    <h1>Audio Recorder 🎙️</h1>
+
+    <div id="recorder-controls">
+        <button id="start-record-btn" class="control-button" disabled>Start Recording</button>
+        <button id="stop-record-btn" class="control-button" disabled>Stop Recording</button>
+        <button id="save-record-btn" class="control-button" disabled>Save to List</button>
+    </div>
+
+    <div id="status-message">Loading authentication...</div>
+    <div id="audio-player-container"></div>
+
+    <a href="virerecord.html" id="recordings-link">View Recordings</a>
+
+    <!-- Firebase SDK (v8 style) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+    <script>
+        // ✅ Initialize Firebase (only once)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBBWw27oCRkOV6ujpxIbkTNyx9mSRlW_LE",
+            authDomain: "tunescope-c5ad7.firebaseapp.com",
+            projectId: "tunescope-c5ad7",
+            storageBucket: "tunescope-c5ad7.firebasestorage.app",
+            messagingSenderId: "113793961777",
+            appId: "1:113793961777:web:e2f07a2ac3cfb6a92bea10",
+            measurementId: "G-GJZMFGNSS0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // --- DOM elements ---
+        const logoutButton = document.getElementById('logout-btn');
+        const startRecordButton = document.getElementById('start-record-btn');
+        const stopRecordButton = document.getElementById('stop-record-btn');
+        const saveRecordButton = document.getElementById('save-record-btn');
+        const statusMessage = document.getElementById('status-message');
+        const audioPlayerContainer = document.getElementById('audio-player-container');
+
+        // --- Auth State ---
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                logoutButton.style.display = 'block';
+                startRecordButton.disabled = false;
+                statusMessage.textContent = 'Ready to record.';
+            } else {
+                window.location.href = 'signup.html';
+            }
+        });
+
+        logoutButton.addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Failed to log out.');
+            }
+        });
+
+        // --- Recorder Logic ---
+        let mediaRecorder;
+        let recordedChunks = [];
+        let currentStream;
+
+        function handleDataAvailable(event) {
+            if (event.data.size > 0) recordedChunks.push(event.data);
+        }
+
+        function saveRecordingToLocalStorage(blob) {
+            const timestamp = new Date().toLocaleString('en-GB', { 
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                day: '2-digit', month: '2-digit', year: 'numeric' 
+            }).replace(/[/,]/g, '-').replace(/\s+/g, '_');
+
+            const recordingName = `Recording_${timestamp}`;
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                const dataUrl = reader.result;
+                let recordings = JSON.parse(localStorage.getItem('audioRecordings') || '[]');
+                recordings.push({ id: Date.now(), name: recordingName, data: dataUrl, type: blob.type });
+                localStorage.setItem('audioRecordings', JSON.stringify(recordings));
+                statusMessage.textContent = `✅ "${recordingName}" saved successfully!`;
+                saveRecordButton.disabled = true;
+            };
+            reader.readAsDataURL(blob);
+        }
+
+        startRecordButton.addEventListener('click', () => {
+            recordedChunks = [];
+            audioPlayerContainer.innerHTML = '';
+            saveRecordButton.disabled = true;
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then((stream) => {
+                    currentStream = stream;
+                    const options = { mimeType: 'audio/webm' };
+                    mediaRecorder = new MediaRecorder(stream, options);
+                    mediaRecorder.ondataavailable = handleDataAvailable;
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(blob);
+                        const audio = document.createElement('audio');
+                        audio.controls = true;
+                        audio.src = audioUrl;
+                        audioPlayerContainer.innerHTML = '<h3>Last Recording Preview:</h3>';
+                        audioPlayerContainer.appendChild(audio);
+
+                        statusMessage.textContent = 'Recording stopped. Click "Save to List" to store it.';
+                        saveRecordButton.onclick = () => saveRecordingToLocalStorage(blob);
+                        saveRecordButton.disabled = false;
+                    };
+
+                    mediaRecorder.start();
+                    startRecordButton.disabled = true;
+                    stopRecordButton.disabled = false;
+                    statusMessage.textContent = '🔴 Recording...';
+                })
+                .catch((error) => {
+                    console.error('Mic access error:', error);
+                    statusMessage.textContent = '❌ Microphone permission denied.';
+                });
+        });
+
+        stopRecordButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+            startRecordButton.disabled = false;
+            stopRecordButton.disabled = true;
+        });
+    </script>
+</body>
+</html>
